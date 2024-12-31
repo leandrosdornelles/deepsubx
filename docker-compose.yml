@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  app:
+    image: ghcr.io/garanda21/deepsubx:latest
+    ports:
+      - "3000:3000"  # Backend API port
+      - "5173:5173"  # Frontend dev server port
+    environment:
+      - DEEPL_API_KEY=${DEEPL_API_KEY}
+      - PLEX_HOST=${PLEX_HOST}
+      - PLEX_PORT=${PLEX_PORT}
+      - PLEX_TOKEN=${PLEX_TOKEN}
+    volumes:
+      - ./data:/data
+      - ./movies:/movies
