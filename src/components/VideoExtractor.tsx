@@ -1,6 +1,6 @@
 import { FileSelect } from './FileSelect';
 import { LanguageSelect } from './LanguageSelect';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from '../lib/api';
 import { normalizeLanguageCode } from '../lib/utils/languages';
 import { useState } from 'react';
@@ -36,6 +36,7 @@ export function VideoExtractor({
   onClearStatus,
 }: Props) {
   const [updatePlex, setUpdatePlex] = useState(true);
+  const queryClient = useQueryClient();
 
   const { data: videos } = useQuery({
     queryKey: ['videos', type, show, season],
@@ -92,7 +93,7 @@ export function VideoExtractor({
         }
 
         return translatedPath;
-      } catch (error) {
+      } catch (error: any) { // Added type annotation to error
         console.log('Extraction error:', error);
         if (error.response) {
           const originalMessage = error.response.data.message;
@@ -105,8 +106,12 @@ export function VideoExtractor({
         throw error;
       }
     },
-    onSuccess: (path) => {
+    onSuccess: (path: string) => { // Added type annotation to path
       onTranslationComplete(path);
+      // Wait a bit for DeepL API to update usage stats
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['character-count'] });
+      }, 2000); // 2-second delay
     },
   });
 

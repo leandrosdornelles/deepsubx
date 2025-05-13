@@ -1,6 +1,6 @@
 import { FileSelect } from './FileSelect';
 import { LanguageSelect } from './LanguageSelect';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from '../lib/api';
 import { detectLanguageFromFilename } from '../lib/utils/subtitleLanguage';
 import { useState } from 'react';
@@ -36,6 +36,7 @@ export function SubtitleTranslator({
   onClearStatus,
 }: Props) {
   const [updatePlex, setUpdatePlex] = useState(true);
+  const queryClient = useQueryClient();
 
   const { data: subtitles } = useQuery({
     queryKey: ['subtitles', type, show, season],
@@ -79,8 +80,12 @@ export function SubtitleTranslator({
         throw error;
       }
     },
-    onSuccess: (path) => {
+    onSuccess: (path: string) => {
       onTranslationComplete(path);
+      // Wait a bit for DeepL API to update usage stats
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['character-count'] });
+      }, 2000); // 2-second delay
     },
   });
 

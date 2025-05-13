@@ -7,7 +7,7 @@ export function ApiUsage() {
     queryKey: ['character-count'],
     queryFn: api.getCharacterCount,
     refetchInterval: false, // Disable auto-refetch
-    staleTime: Infinity, // Prevent automatic background updates
+    staleTime: 0, // Prevent automatic background updates
   });
 
   if (!data) return null;
