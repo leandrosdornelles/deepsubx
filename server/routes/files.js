@@ -5,11 +5,16 @@ import { DATA_DIR, MOVIES_DIR } from '../utils/paths.js';
 
 const router = Router();
 
+// Helper function to check if a folder/file name is valid (not starting with "@", ".", or special characters)
+const isValidName = (name) => {
+  return !name.startsWith('@') && !name.startsWith('.') && /^[a-zA-Z0-9-_ ]+/.test(name);
+};
+
 router.get('/list_shows', async (req, res) => {
   try {
     const shows = await fs.readdir(DATA_DIR);
     const validShows = await Promise.all(
-      shows.map(async (show) => {
+      shows.filter(isValidName).map(async (show) => {
         const stats = await fs.stat(join(DATA_DIR, show));
         return stats.isDirectory() ? show : null;
       })
@@ -24,7 +29,7 @@ router.get('/list_movies', async (req, res) => {
   try {
     const movies = await fs.readdir(MOVIES_DIR);
     const validMovies = await Promise.all(
-      movies.map(async (movie) => {
+      movies.filter(isValidName).map(async (movie) => {
         const stats = await fs.stat(join(MOVIES_DIR, movie));
         return stats.isDirectory() ? movie : null;
       })
@@ -49,7 +54,7 @@ router.get('/list_seasons', async (req, res) => {
     const showPath = join(DATA_DIR, show);
     const seasons = await fs.readdir(showPath);
     const validSeasons = await Promise.all(
-      seasons.map(async (season) => {
+      seasons.filter(isValidName).map(async (season) => {
         const stats = await fs.stat(join(showPath, season));
         return stats.isDirectory() ? season : null;
       })
@@ -76,8 +81,25 @@ router.get('/list_subtitles', async (req, res) => {
       : join(basePath, show, season);
 
     const files = await fs.readdir(fullPath);
-    const subtitles = files.filter((file) => file.endsWith('.srt'));
-    res.json(subtitles);
+    const subtitleFiles = files.filter((file) => isValidName(file) && file.endsWith('.srt'));
+    
+    // Get file stats and sort by creation time
+    const subtitlesWithStats = await Promise.all(
+      subtitleFiles.map(async (file) => {
+        const stats = await fs.stat(join(fullPath, file));
+        return {
+          name: file,
+          createdAt: stats.birthtime
+        };
+      })
+    );
+    
+    // Sort by creation date, newest first
+    subtitlesWithStats.sort((a, b) => b.createdAt - a.createdAt);
+    
+    // Return just the filenames
+    const sortedSubtitles = subtitlesWithStats.map(file => file.name);
+    res.json(sortedSubtitles);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -99,10 +121,27 @@ router.get('/list_video_files', async (req, res) => {
       : join(basePath, show, season);
 
     const files = await fs.readdir(fullPath);
-    const videos = files.filter((file) => 
-      ['.mkv', '.mp4', '.avi'].some(ext => file.toLowerCase().endsWith(ext))
+    const videoFiles = files.filter((file) => 
+      isValidName(file) && ['.mkv', '.mp4', '.avi'].some(ext => file.toLowerCase().endsWith(ext))
     );
-    res.json(videos);
+    
+    // Get file stats and sort by creation time
+    const videosWithStats = await Promise.all(
+      videoFiles.map(async (file) => {
+        const stats = await fs.stat(join(fullPath, file));
+        return {
+          name: file,
+          createdAt: stats.birthtime
+        };
+      })
+    );
+    
+    // Sort by creation date, newest first
+    videosWithStats.sort((a, b) => b.createdAt - a.createdAt);
+    
+    // Return just the filenames
+    const sortedVideos = videosWithStats.map(file => file.name);
+    res.json(sortedVideos);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
