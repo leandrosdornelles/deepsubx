@@ -67,15 +67,30 @@ export function SubtitleTranslator({
         }
 
         return path;
-      } catch (error) {
+      } catch (error: any) {
         console.log('Translation error:', error);
-        if (error.response) {
+        
+        // Handle API error responses with enhanced details
+        if (error.apiDetails) {
+          // This is our enhanced API error format from the interceptor
+          const detailedMessage = `Translation failed: ${error.message}` + 
+            (error.deeplRequest ? `\nDetails: ${JSON.stringify(error.deeplRequest, null, 2)}` : '');
+          
+          onError(new Error(detailedMessage));
+        } else if (error.response) {
+          // Standard axios error
           const originalMessage = error.response.data.message;
           onError(new Error(originalMessage));
         } else if (error instanceof Error) {
+          // Standard JS error
           onError(error);
         } else {
-          onError(new Error('An unknown error occurred'));
+          // Unknown error type
+          if (error && error.message) {
+            onError(new Error(error.message));
+          } else {
+            onError(new Error('An unknown error occurred'));
+          }
         }
         throw error;
       }

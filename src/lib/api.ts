@@ -1,9 +1,39 @@
-import axios from 'axios';
-import type { CharacterCount, Show, Movie, SubtitleFile, VideoFile } from '../types';
+import axios, { AxiosResponse, AxiosError } from 'axios';
+import type { CharacterCount, Show, Movie, SubtitleFile, VideoFile, ApiErrorResponse } from '../types';
 
 const api = axios.create({
   baseURL: '/api',
 });
+
+// Add response interceptor to standardize error handling
+api.interceptors.response.use(
+  (response: AxiosResponse): AxiosResponse => response,
+  (error: AxiosError): Promise<never> => {
+    // Create a standardized error object
+    const enhancedError: ApiErrorResponse = {
+      message: error.response?.data?.message || error.message || 'Unknown error occurred',
+      status: error.response?.status || 500,
+      originalError: error.response?.data?.originalError || error.toString(),
+      apiDetails: error.response?.data?.apiDetails || null,
+      deeplRequest: error.response?.data?.deeplRequest || null,
+      isLargeFile: error.response?.data?.isLargeFile || false,
+      // Include the original axios error object for access to all details
+      axiosError: error
+    };
+    
+    // Add more descriptive messages for common status codes
+    if (error.response?.status === 500 && !error.response.data?.message) {
+      enhancedError.message = 'Internal server error. The server encountered an error processing your request.';
+    } else if (error.response?.status === 429) {
+      enhancedError.message = 'Too many requests. Please try again later.';
+    } else if (error.response?.status === 403) {
+      enhancedError.message = 'Authentication failed. Please check your API keys.';
+    }
+    
+    // Reject with the enhanced error
+    return Promise.reject(enhancedError);
+  }
+);
 
 export const getShows = async (): Promise<Show[]> => {
   const { data } = await api.get<string[]>('/list_shows');
@@ -56,8 +86,14 @@ export const extractSubtitles = async (params: {
   source_lang: string;
   type: 'series' | 'movies';
 }): Promise<{ path: string }> => {
-  const { data } = await api.post('/extract_subtitles', params);
-  return data;
+  try {
+    const { data } = await api.post('/extract_subtitles', params);
+    return data;
+  } catch (error) {
+    console.error('Subtitle extraction error:', error);
+    // Re-throw the error for handling in the UI components
+    throw error;
+  }
 };
 
 export const translateSubtitle = async (params: {
@@ -68,8 +104,14 @@ export const translateSubtitle = async (params: {
   target_lang: string;
   type: 'series' | 'movies';
 }): Promise<{ path: string }> => {
-  const { data } = await api.post('/translate_subtitle', params);
-  return data;
+  try {
+    const { data } = await api.post('/translate_subtitle', params);
+    return data;
+  } catch (error) {
+    console.error('Translation error:', error);
+    // Re-throw the error for handling in the UI components
+    throw error;
+  }
 };
 
 export async function isPlexConfigured(): Promise<boolean> {
