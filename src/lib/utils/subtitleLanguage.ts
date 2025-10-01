@@ -20,6 +20,7 @@ const FILENAME_LANG_PATTERNS: Record<string, string> = {
     pt: 'PT',
     por: 'PT',
     portuguese: 'PT',
+    pob: 'PT-BR',
     ru: 'RU',
     rus: 'RU',
     russian: 'RU',
